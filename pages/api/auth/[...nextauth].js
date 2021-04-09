@@ -89,55 +89,55 @@ export default NextAuth({
   // when an action is performed.
   // https://next-auth.js.org/configuration/callbacks
   callbacks: {
-    async signIn(user, account, metadata) {
-      console.log(metadata);
-      if (account.provider === "github") {
-        const githubUser = {
-          id: metadata.id,
-          login: metadata.login,
-          name: metadata.name,
-          avatar: user.image,
-        };
-        const result = await getTokenFromYourAPIServer("github", githubUser);
-        user.accessToken = result.data.accessToken;
-        user.refreshToken = result.data.refreshToken;
-        return true;
-      }
+    // async signIn(user, account, metadata) {
+    //   console.log("SIGN IN CALLBACK");
+    //   if (account.provider === "github") {
+    //     const githubUser = {
+    //       id: metadata.id,
+    //       login: metadata.login,
+    //       name: metadata.name,
+    //       avatar: user.image,
+    //     };
+    //     const result = await getTokenFromYourAPIServer("github", githubUser);
+    //     user.accessToken = result.data.accessToken;
+    //     user.refreshToken = result.data.refreshToken;
+    //     return true;
+    //   }
 
-      if (account.provider === "facebook") {
-        const facebookUser = {
-          login: metadata.email,
-          firstName: metadata.first_name,
-          lastName: metadata.last_name,
-        };
-        const result = await getTokenFromYourAPIServer(
-          account.provider,
-          facebookUser
-        );
-        user.accessToken = result.data.accessToken;
-        user.refreshToken = result.data.refreshToken;
+    //   if (account.provider === "facebook") {
+    //     const facebookUser = {
+    //       login: metadata.email,
+    //       firstName: metadata.first_name,
+    //       lastName: metadata.last_name,
+    //     };
+    //     const result = await getTokenFromYourAPIServer(
+    //       account.provider,
+    //       facebookUser
+    //     );
+    //     user.accessToken = result.data.accessToken;
+    //     user.refreshToken = result.data.refreshToken;
 
-        return true;
-      }
+    //     return true;
+    //   }
 
-      if (account.provider === "google") {
-        const googleUser = {
-          login: metadata.email,
-          firstName: metadata.given_name,
-          lastName: metadata.family_name,
-        };
-        const result = await getTokenFromYourAPIServer(
-          account.provider,
-          googleUser
-        );
-        user.accessToken = result.data.accessToken;
-        user.refreshToken = result.data.refreshToken;
+    //   if (account.provider === "google") {
+    //     const googleUser = {
+    //       login: metadata.email,
+    //       firstName: metadata.given_name,
+    //       lastName: metadata.family_name,
+    //     };
+    //     const result = await getTokenFromYourAPIServer(
+    //       account.provider,
+    //       googleUser
+    //     );
+    //     user.accessToken = result.data.accessToken;
+    //     user.refreshToken = result.data.refreshToken;
 
-        return true;
-      }
+    //     return true;
+    //   }
 
-      return false;
-    },
+    //   return false;
+    // },
     // async redirect(url, baseUrl) {
     //   return baseUrl;
     // },
@@ -147,7 +147,6 @@ export default NextAuth({
       console.log("SESSION");
       if (token) {
         session.user = token.user;
-        session.user.accessToken = token.user.accessToken;
       }
       console.log(session);
 
@@ -155,21 +154,67 @@ export default NextAuth({
     },
     async jwt(token, user, account, profile, isNewUser) {
       console.log("JWT CALLBACK");
-      console.log(account);
-      console.log(profile);
+      // console.log("account", account);
+      // console.log(profile);
       if (account && user) {
-        token.user = user;
-        return token;
-      }
+        let accessToken;
+        let refreshToken;
 
+        if (account.provider === "github") {
+          const githubUser = {
+            id: profile.id,
+            login: profile.login,
+            name: profile.name,
+            avatar: user.image,
+          };
+          const result = await getTokenFromYourAPIServer("github", githubUser);
+          accessToken = result.data.accessToken;
+          refreshToken = result.data.refreshToken;
+        }
+
+        if (account.provider === "facebook") {
+          const facebookUser = {
+            login: profile.email,
+            firstName: profile.first_name,
+            lastName: profile.last_name,
+          };
+          const result = await getTokenFromYourAPIServer(
+            account.provider,
+            facebookUser
+          );
+          accessToken = result.data.accessToken;
+          refreshToken = result.data.refreshToken;
+        }
+
+        if (account.provider === "google") {
+          const googleUser = {
+            login: profile.email,
+            firstName: profile.given_name,
+            lastName: profile.family_name,
+          };
+          const result = await getTokenFromYourAPIServer(
+            account.provider,
+            googleUser
+          );
+          accessToken = result.data.accessToken;
+          refreshToken = result.data.refreshToken;
+        }
+
+        return {
+          user,
+          accessToken,
+          refreshToken,
+        };
+      }
+      console.log(token);
       try {
-        verify(token.user.accessToken, process.env.ACCESSTOKEN_SECRET);
+        verify(token.accessToken, process.env.ACCESSTOKEN_SECRET);
       } catch (error) {
         console.log("token expired");
-        const res = await getRefreshToken(token.user.refreshToken);
+        const res = await getRefreshToken(token.refreshToken);
 
-        token.user.accessToken = res.data.accessToken;
-        console.log("new token created", token.user.accessToken);
+        token.accessToken = res.data.accessToken;
+        console.log("new token created", token.accessToken);
         console.log(token);
         return token;
       }
