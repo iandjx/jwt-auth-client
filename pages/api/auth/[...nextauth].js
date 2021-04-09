@@ -146,7 +146,7 @@ export default NextAuth({
       console.log(token);
       console.log("SESSION");
       if (token) {
-        session.user = token.user;
+        return token;
       }
       console.log(session);
 
