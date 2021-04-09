@@ -10,6 +10,24 @@ export default NextAuth({
       clientId: process.env.GITHUB_ID,
       clientSecret: process.env.GITHUB_SECRET,
     }),
+    Providers.Facebook({
+      clientId: process.env.FACEBOOK_CLIENT_ID,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+      profileUrl:
+        "https://graph.facebook.com/me?fields=email,first_name,last_name",
+      profile: (_profile) => {
+        return {
+          id: _profile.id,
+          firstName: _profile.first_name,
+          lastName: _profile.last_name,
+          email: _profile.email,
+        };
+      },
+    }),
+    Providers.Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
   ],
   // Database optional. MySQL, Maria DB, Postgres and MongoDB are supported.
   // https://next-auth.js.org/configuration/databases
@@ -71,7 +89,7 @@ export default NextAuth({
   // https://next-auth.js.org/configuration/callbacks
   callbacks: {
     async signIn(user, account, metadata) {
-      // console.log(account.provider);
+      console.log(metadata);
       if (account.provider === "github") {
         const githubUser = {
           id: metadata.id,
@@ -80,16 +98,48 @@ export default NextAuth({
           avatar: user.image,
         };
         const result = await getTokenFromYourAPIServer("github", githubUser);
-        Cookies.set("hi", "hello");
         user.accessToken = result.data.accessToken;
         user.refreshToken = result.data.refreshToken;
         return true;
       }
+
+      if (account.provider === "facebook") {
+        const facebookUser = {
+          login: metadata.email,
+          firstName: metadata.first_name,
+          lastName: metadata.last_name,
+        };
+        const result = await getTokenFromYourAPIServer(
+          account.provider,
+          facebookUser
+        );
+        user.accessToken = result.data.accessToken;
+        user.refreshToken = result.data.refreshToken;
+
+        return true;
+      }
+
+      if (account.provider === "google") {
+        const googleUser = {
+          login: metadata.email,
+          firstName: metadata.given_name,
+          lastName: metadata.family_name,
+        };
+        const result = await getTokenFromYourAPIServer(
+          account.provider,
+          googleUser
+        );
+        user.accessToken = result.data.accessToken;
+        user.refreshToken = result.data.refreshToken;
+
+        return true;
+      }
+
       return false;
     },
-    async redirect(url, baseUrl) {
-      return baseUrl;
-    },
+    // async redirect(url, baseUrl) {
+    //   return baseUrl;
+    // },
     async session(session, token) {
       session.user = token.user;
       return session;
@@ -98,7 +148,6 @@ export default NextAuth({
       if (user) {
         token.user = user;
       }
-      console.log("get token", token);
       // verify access token
       // https://next-auth.js.org/tutorials/refresh-token-rotation#source-code
       return token;
@@ -113,11 +162,11 @@ export default NextAuth({
   debug: false,
 });
 
-const getTokenFromYourAPIServer = async (provider, githubUser) => {
-  const url = "http://localhost:3001/login";
+const getTokenFromYourAPIServer = async (provider, user) => {
+  const url = "http://localhost:4000/api/v2/login";
   const res = await axios.post(url, {
     provider,
-    githubUser,
+    user,
   });
   return res;
 };
