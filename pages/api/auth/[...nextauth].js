@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Providers from "next-auth/providers";
 import axios from "axios";
+import { verify } from "jsonwebtoken";
 // For more information on each option (and a full list of options) go to
 // https://next-auth.js.org/configuration/options
 export default NextAuth({
@@ -141,13 +142,38 @@ export default NextAuth({
     //   return baseUrl;
     // },
     async session(session, token) {
-      session.user = token.user;
+      console.log("SESSION CALLBACK");
+      console.log(token);
+      console.log("SESSION");
+      if (token) {
+        session.user = token.user;
+        session.user.accessToken = token.user.accessToken;
+      }
+      console.log(session);
+
       return session;
     },
     async jwt(token, user, account, profile, isNewUser) {
-      if (user) {
+      console.log("JWT CALLBACK");
+      console.log(account);
+      console.log(profile);
+      if (account && user) {
         token.user = user;
+        return token;
       }
+
+      try {
+        verify(token.user.accessToken, process.env.ACCESSTOKEN_SECRET);
+      } catch (error) {
+        console.log("token expired");
+        const res = await getRefreshToken(token.user.refreshToken);
+
+        token.user.accessToken = res.data.accessToken;
+        console.log("new token created", token.user.accessToken);
+        console.log(token);
+        return token;
+      }
+
       // verify access token
       // https://next-auth.js.org/tutorials/refresh-token-rotation#source-code
       return token;
@@ -167,6 +193,14 @@ const getTokenFromYourAPIServer = async (provider, user) => {
   const res = await axios.post(url, {
     provider,
     user,
+  });
+  return res;
+};
+
+const getRefreshToken = async (refreshToken) => {
+  const url = "http://localhost:4000/api/v2/token-refresh";
+  const res = await axios.post(url, {
+    refreshToken,
   });
   return res;
 };

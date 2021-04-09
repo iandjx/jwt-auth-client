@@ -6,7 +6,7 @@ import AccessDenied from "../components/access-denied";
 export default function Page() {
   const [session, loading] = useSession();
   const [content, setContent] = useState();
-
+  console.log(session);
   // Fetch content from protected route
   useEffect(() => {
     const fetchData = async () => {

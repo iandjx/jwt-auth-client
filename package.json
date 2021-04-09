@@ -10,7 +10,7 @@
   "homepage": "http://next-auth-example.now.sh",
   "main": "",
   "scripts": {
-    "dev": "next",
+    "dev": "NODE_OPTIONS='--inspect' next dev",
     "build": "next build",
     "start": "next start"
   },
@@ -21,6 +21,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.21.1",
+    "jsonwebtoken": "^8.5.1",
     "next": "^10.0.7",
     "next-auth": "latest",
     "react": "^17.0.1",
